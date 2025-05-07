@@ -44,12 +44,11 @@
       
       <div class="movie-actions" @click.stop>
         <el-button
-          type="primary"
-          :icon="isLiked ? 'Star' : 'StarFilled'"
-          :class="{ 'is-liked': isLiked }"
-          @click="handleLike"
+          :type="isFavorited ? 'danger' : 'primary'"
+          :icon="isFavorited ? 'Star' : 'StarFilled'"
+          @click="handleFavorite"
         >
-          {{ isLiked ? '已收藏' : '收藏' }}
+          {{ isFavorited ? '已收藏' : '收藏' }}
         </el-button>
         <el-button
           type="info"
@@ -64,6 +63,8 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
+
 export default {
   name: 'MovieCard',
   props: {
@@ -81,15 +82,27 @@ export default {
       })
     }
   },
-  data() {
-    return {
-      isLiked: false
+  computed: {
+    ...mapGetters('user', ['isLoggedIn']),
+    isFavorited() {
+      return this.$store.getters['user/favoriteMovies'].includes(this.movie.id)
     }
   },
   methods: {
-    handleLike() {
-      this.isLiked = !this.isLiked
-      // TODO: 实现收藏逻辑
+    ...mapActions('user', ['toggleFavoriteMovie']),
+    
+    async handleFavorite() {
+      if (!this.isLoggedIn) {
+        this.$message.warning('请先登录')
+        return
+      }
+      
+      try {
+        await this.toggleFavoriteMovie(this.movie)
+        this.$message.success(!this.isFavorited ? '已取消收藏' : '已收藏')
+      } catch (error) {
+        this.$message.error('操作失败')
+      }
     },
     handleDetails() {
       this.$router.push(`/movie/${this.movie.id}`)
@@ -209,27 +222,18 @@ export default {
 
 .movie-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   margin-top: 8px;
 }
 
 .movie-actions .el-button {
-  padding: 4px 8px;
+  flex: 1;
+  padding: 8px 12px;
   font-size: 12px;
 }
 
 .movie-actions .el-icon {
+  margin-right: 4px;
   font-size: 12px;
-}
-
-.movie-actions .el-button.is-liked {
-  background-color: #ff4d4f;
-  border-color: #ff4d4f;
-  color: #fff;
-}
-
-.movie-actions .el-button.is-liked:hover {
-  background-color: #ff7875;
-  border-color: #ff7875;
 }
 </style> 

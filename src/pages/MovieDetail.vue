@@ -81,11 +81,11 @@
         <div class="action-buttons">
           <el-button
             type="primary"
-            :icon="isLiked ? 'Star' : 'StarFilled'"
-            :class="{ 'is-liked': isLiked }"
-            @click="handleLike"
+            :icon="isFavorite ? 'Star' : 'StarFilled'"
+            :class="{ 'is-liked': isFavorite }"
+            @click="handleFavorite"
           >
-            {{ isLiked ? '取消收藏' : '收藏' }}
+            {{ isFavorite ? '取消收藏' : '收藏' }}
           </el-button>
           <el-button type="success" icon="VideoPlay">
             观看预告片
@@ -99,13 +99,19 @@
 
 <script>
 import { movies } from '../mock/movies'
+import { mapGetters, mapActions } from 'vuex'
 
 export default {
   name: 'MovieDetail',
   data() {
     return {
-      movie: null,
-      isLiked: false
+      movie: null
+    }
+  },
+  computed: {
+    ...mapGetters('user', ['isLoggedIn', 'favoriteMovies']),
+    isFavorite() {
+      return this.favoriteMovies.includes(this.movie?.id)
     }
   },
   created() {
@@ -113,12 +119,22 @@ export default {
     this.movie = movies.find(m => m.id === movieId)
   },
   methods: {
+    ...mapActions('user', ['toggleFavoriteMovie']),
     goBack() {
       this.$router.back()
     },
-    handleLike() {
-      this.isLiked = !this.isLiked
-      // TODO: 实现收藏逻辑
+    async handleFavorite() {
+      if (!this.isLoggedIn) {
+        this.$message.warning('请先登录')
+        return
+      }
+      
+      try {
+        await this.toggleFavoriteMovie(this.movie)
+        this.$message.success(!this.isFavorite ? '已收藏' : '已取消收藏')
+      } catch (error) {
+        this.$message.error('操作失败')
+      }
     }
   }
 }

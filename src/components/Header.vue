@@ -1,68 +1,33 @@
 <template>
   <header class="header">
-    <div class="header-container">
-      <div class="logo">
-        <router-link to="/">
-          <el-icon class="logo-icon"><Film /></el-icon>
-          <span>电影推荐系统</span>
-        </router-link>
+    <div class="header-content">
+      <div class="logo" @click="$router.push('/')">
+        <span>电影推荐系统</span>
       </div>
       
       <div class="nav-links">
-        <router-link to="/realtime">
-          <el-button type="text">
-            <el-icon><VideoPlay /></el-icon>
-            实时推荐
-          </el-button>
-        </router-link>
-        <router-link to="/offline">
-          <el-button type="text">
-            <el-icon><Clock /></el-icon>
-            离线推荐
-          </el-button>
-        </router-link>
-        <router-link to="/popular">
-          <el-button type="text">
-            <el-icon><Star /></el-icon>
-            热门电影
-          </el-button>
-        </router-link>
+        <router-link to="/" class="nav-link">热门推荐</router-link>
+        <router-link to="/realtime" class="nav-link">实时推荐</router-link>
+        <router-link to="/offline" class="nav-link">离线推荐</router-link>
       </div>
       
-      <div class="user-actions">
+      <div class="user-section">
         <template v-if="isLoggedIn">
-          <el-dropdown>
+          <el-dropdown @command="handleCommand">
             <span class="user-info">
-              <el-avatar :size="32" :src="userAvatar" />
-              <span class="username">{{ username }}</span>
+              {{ currentUser.username }}
+              <el-icon><arrow-down /></el-icon>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>
-                  <el-icon><User /></el-icon>
-                  个人中心
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                </el-dropdown-item>
+                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+                <el-dropdown-item command="logout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </template>
         <template v-else>
-          <router-link to="/login">
-            <el-button type="text">
-              <el-icon><User /></el-icon>
-              登录
-            </el-button>
-          </router-link>
-          <router-link to="/register">
-            <el-button type="primary" plain>
-              <el-icon><Edit /></el-icon>
-              注册
-            </el-button>
-          </router-link>
+          <router-link to="/login" class="login-btn">登录/注册</router-link>
         </template>
       </div>
     </div>
@@ -70,18 +35,32 @@
 </template>
 
 <script>
+import { mapGetters, mapActions } from 'vuex'
+import { ArrowDown } from '@element-plus/icons-vue'
+
 export default {
   name: 'Header',
-  data() {
-    return {
-      isLoggedIn: false,
-      username: '用户名',
-      userAvatar: 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
-    }
+  components: {
+    ArrowDown
+  },
+  computed: {
+    ...mapGetters('user', ['isLoggedIn', 'currentUser'])
   },
   methods: {
-    handleLogout() {
-      // TODO: 实现退出登录逻辑
+    ...mapActions('user', ['logout']),
+    
+    async handleCommand(command) {
+      if (command === 'logout') {
+        try {
+          await this.logout()
+          this.$message.success('已退出登录')
+          this.$router.push('/login')
+        } catch (error) {
+          this.$message.error('退出失败')
+        }
+      } else if (command === 'profile') {
+        this.$router.push('/profile')
+      }
     }
   }
 }
@@ -93,37 +72,32 @@ export default {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  height: 60px;
   background-color: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
 }
 
-.header-container {
-  max-width: 1200px;
+.header-content {
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 0 20px;
-  height: 64px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 20px;
 }
 
-.logo a {
+.logo {
   display: flex;
   align-items: center;
-  text-decoration: none;
-  color: #303133;
-}
-
-.logo-icon {
-  font-size: 24px;
-  margin-right: 8px;
-  color: #409eff;
+  cursor: pointer;
 }
 
 .logo span {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
+  color: #303133;
 }
 
 .nav-links {
@@ -131,43 +105,69 @@ export default {
   gap: 20px;
 }
 
-.nav-links a {
+.nav-link {
   text-decoration: none;
+  color: #606266;
+  font-size: 16px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.3s;
 }
 
-.nav-links .el-button {
-  padding: 0 12px;
+.nav-link:hover,
+.nav-link.router-link-active {
+  color: #409EFF;
+  background-color: #ecf5ff;
 }
 
-.nav-links .el-icon {
-  margin-right: 4px;
-}
-
-.user-actions {
+.user-section {
   display: flex;
   align-items: center;
-  gap: 16px;
 }
 
 .user-info {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.user-info:hover {
-  background-color: #f5f7fa;
-}
-
-.username {
-  margin-left: 8px;
   color: #606266;
+  font-size: 14px;
 }
 
-.el-dropdown-menu .el-icon {
-  margin-right: 8px;
+.user-info .el-icon {
+  margin-left: 4px;
+}
+
+.login-btn {
+  text-decoration: none;
+  color: #409EFF;
+  font-size: 14px;
+  padding: 8px 16px;
+  border: 1px solid #409EFF;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.login-btn:hover {
+  color: #fff;
+  background-color: #409EFF;
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0 10px;
+  }
+  
+  .logo span {
+    display: none;
+  }
+  
+  .nav-links {
+    gap: 10px;
+  }
+  
+  .nav-link {
+    font-size: 14px;
+    padding: 6px 8px;
+  }
 }
 </style> 

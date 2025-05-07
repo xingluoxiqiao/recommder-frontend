@@ -23,21 +23,21 @@
       <el-card class="login-card">
         <template #header>
           <div class="card-header">
-            <h2>欢迎登录</h2>
-            <p class="subtitle">登录以获取个性化推荐</p>
+            <h2>{{ isLogin ? '登录' : '注册' }}</h2>
+            <p class="subtitle">{{ isLogin ? '登录以获取个性化推荐' : '注册以获取个性化推荐' }}</p>
           </div>
         </template>
         
         <el-form
-          ref="loginForm"
-          :model="loginForm"
+          ref="form"
+          :model="form"
           :rules="rules"
           label-position="top"
-          @submit.prevent="handleLogin"
+          @submit.prevent="handleSubmit"
         >
           <el-form-item label="用户名" prop="username">
             <el-input
-              v-model="loginForm.username"
+              v-model="form.username"
               placeholder="请输入用户名"
               prefix-icon="User"
               size="large"
@@ -46,9 +46,20 @@
           
           <el-form-item label="密码" prop="password">
             <el-input
-              v-model="loginForm.password"
+              v-model="form.password"
               type="password"
               placeholder="请输入密码"
+              prefix-icon="Lock"
+              show-password
+              size="large"
+            />
+          </el-form-item>
+          
+          <el-form-item v-if="!isLogin" label="确认密码" prop="confirmPassword">
+            <el-input
+              v-model="form.confirmPassword"
+              type="password"
+              placeholder="请再次输入密码"
               prefix-icon="Lock"
               show-password
               size="large"
@@ -68,13 +79,15 @@
               :loading="loading"
               size="large"
             >
-              登录
+              {{ isLogin ? '登录' : '注册' }}
             </el-button>
           </el-form-item>
           
           <div class="register-link">
-            还没有账号？
-            <router-link to="/register">立即注册</router-link>
+            {{ isLogin ? '还没有账号？' : '已有账号？' }}
+            <a href="javascript:;" @click="toggleMode">
+              {{ isLogin ? '立即注册' : '立即登录' }}
+            </a>
           </div>
         </el-form>
       </el-card>
@@ -83,13 +96,26 @@
 </template>
 
 <script>
+import { mapActions, mapGetters } from 'vuex'
+
 export default {
   name: 'Login',
   data() {
+    const validatePass2 = (rule, value, callback) => {
+      if (value !== this.form.password) {
+        callback(new Error('两次输入密码不一致!'))
+      } else {
+        callback()
+      }
+    }
+    
     return {
-      loginForm: {
+      isLogin: true,
+      loading: false,
+      form: {
         username: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
       },
       rules: {
         username: [
@@ -99,21 +125,72 @@ export default {
         password: [
           { required: true, message: '请输入密码', trigger: 'blur' },
           { min: 6, max: 20, message: '长度在 6 到 20 个字符', trigger: 'blur' }
+        ],
+        confirmPassword: [
+          { required: true, message: '请再次输入密码', trigger: 'blur' },
+          { validator: validatePass2, trigger: 'blur' }
         ]
       },
-      loading: false,
       rememberMe: false
     }
   },
+  computed: {
+    ...mapGetters('user', ['isLoggedIn'])
+  },
   methods: {
-    async handleLogin() {
+    ...mapActions('user', ['login', 'register']),
+    
+    toggleMode() {
+      this.isLogin = !this.isLogin
+      this.$refs.form?.resetFields()
+    },
+    
+    async handleSubmit() {
       try {
-        await this.$refs.loginForm.validate()
+        await this.$refs.form.validate()
         this.loading = true
-        // TODO: 实现登录逻辑
-        console.log('登录表单数据:', this.loginForm)
+        
+        if (this.isLogin) {
+          console.log('开始登录流程...')
+          const user = await this.login({
+            username: this.form.username,
+            password: this.form.password
+          })
+          console.log('登录成功，用户信息：', user)
+          this.$message.success('登录成功')
+          
+          // 检查是否是首次登录（没有收藏类型）
+          if (!user.favoriteGenres || user.favoriteGenres.length === 0) {
+            this.$router.push('/guide')
+          } else {
+            // 获取重定向地址
+            const redirect = this.$route.query.redirect || '/'
+            console.log('准备跳转到：', redirect)
+            
+            // 确保路由跳转
+            try {
+              await this.$router.push(redirect)
+              console.log('路由跳转成功')
+            } catch (routerError) {
+              console.error('路由跳转失败：', routerError)
+              // 如果路由跳转失败，尝试使用 replace
+              await this.$router.replace(redirect)
+              console.log('路由替换成功')
+            }
+          }
+        } else {
+          const user = await this.register({
+            username: this.form.username,
+            password: this.form.password
+          })
+          console.log('注册成功，用户信息：', user)
+          this.$message.success('注册成功，请登录')
+          this.isLogin = true
+          this.$refs.form.resetFields()
+        }
       } catch (error) {
-        console.error('表单验证失败:', error)
+        console.error('操作失败：', error)
+        this.$message.error(error.message || '操作失败')
       } finally {
         this.loading = false
       }

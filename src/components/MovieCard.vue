@@ -1,5 +1,9 @@
 <template>
-  <el-card class="movie-card" :body-style="{ padding: '0px' }">
+  <el-card 
+    class="movie-card" 
+    :body-style="{ padding: '0px' }"
+    @click="handleCardClick"
+  >
     <div class="movie-poster">
       <el-image
         :src="movie.posterUrl"
@@ -15,7 +19,7 @@
       </el-image>
       <div class="movie-rating">
         <el-rate
-          v-model="movie.rating"
+          :model-value="Number(movie.rating)"
           disabled
           show-score
           text-color="#ff9900"
@@ -38,7 +42,7 @@
       </div>
       <p class="movie-description">{{ movie.description }}</p>
       
-      <div class="movie-actions">
+      <div class="movie-actions" @click.stop>
         <el-button
           type="primary"
           :icon="isLiked ? 'Star' : 'StarFilled'"
@@ -67,6 +71,7 @@ export default {
       type: Object,
       required: true,
       default: () => ({
+        id: '',
         title: '',
         posterUrl: '',
         rating: 0,
@@ -87,7 +92,10 @@ export default {
       // TODO: 实现收藏逻辑
     },
     handleDetails() {
-      // TODO: 实现查看详情逻辑
+      this.$router.push(`/movie/${this.movie.id}`)
+    },
+    handleCardClick() {
+      this.handleDetails()
     }
   }
 }
@@ -97,6 +105,9 @@ export default {
 .movie-card {
   height: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
 }
 
 .movie-card:hover {
@@ -106,7 +117,7 @@ export default {
 
 .movie-poster {
   position: relative;
-  padding-top: 150%;
+  padding-top: 140%;
 }
 
 .movie-poster .el-image {
@@ -115,6 +126,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
 .image-placeholder {
@@ -136,8 +148,8 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 4px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  padding: 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
 }
 
 .movie-rating :deep(.el-rate) {
@@ -192,6 +204,7 @@ export default {
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.4;
+  height: 34px;
 }
 
 .movie-actions {

@@ -1,12 +1,17 @@
 <template>
-  <div class="movie-detail">
-    <!-- 电影详细信息部分 -->
-    <div class="movie-info">
+  <div class="movie-detail" v-if="movie">
+    <el-page-header @back="goBack" :title="movie.title">
+      <template #content>
+        <span class="movie-title">{{ movie.title }}</span>
+      </template>
+    </el-page-header>
+
+    <div class="movie-content">
       <div class="movie-poster">
-        <el-image 
-          :src="movie.poster" 
+        <el-image
+          :src="movie.imageUrl"
+          :alt="movie.title"
           fit="cover"
-          :preview-src-list="[movie.poster]"
         >
           <template #error>
             <div class="image-placeholder">
@@ -15,146 +20,105 @@
           </template>
         </el-image>
       </div>
-      
-      <div class="movie-content">
-        <h1 class="movie-title">{{ movie.title }}</h1>
-        
-        <div class="movie-meta">
-          <div class="rating">
-            <el-rate
-              v-model="movie.rating"
-              disabled
-              show-score
-              text-color="#ff9900"
-              score-template="{value}"
-            />
-            <span class="rating-count">{{ movie.ratingCount }} 人评分</span>
-          </div>
-          
-          <div class="tags">
-            <el-tag v-for="tag in movie.tags" :key="tag" class="tag">{{ tag }}</el-tag>
-          </div>
-          
-          <div class="info-list">
+
+      <div class="movie-info">
+        <div class="info-section">
+          <h2 class="section-title">基本信息</h2>
+          <div class="info-grid">
             <div class="info-item">
               <span class="label">导演：</span>
               <span class="value">{{ movie.director }}</span>
             </div>
             <div class="info-item">
-              <span class="label">主演：</span>
-              <span class="value">{{ movie.actors.join(' / ') }}</span>
+              <span class="label">年份：</span>
+              <span class="value">{{ movie.year }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">时长：</span>
+              <span class="value">{{ movie.duration }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">语言：</span>
+              <span class="value">{{ movie.language }}</span>
             </div>
             <div class="info-item">
               <span class="label">类型：</span>
-              <span class="value">{{ movie.genres.join(' / ') }}</span>
+              <span class="value">{{ movie.genre.join(' / ') }}</span>
             </div>
             <div class="info-item">
-              <span class="label">地区：</span>
-              <span class="value">{{ movie.region }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">上映时间：</span>
-              <span class="value">{{ movie.releaseDate }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">片长：</span>
-              <span class="value">{{ movie.duration }}分钟</span>
+              <span class="label">评分：</span>
+              <span class="value">
+                <el-rate
+                  v-model="movie.rating"
+                  disabled
+                  show-score
+                  text-color="#ff9900"
+                  score-template="{value}"
+                />
+              </span>
             </div>
           </div>
         </div>
-        
-        <div class="movie-description">
-          <h3>剧情简介</h3>
-          <p>{{ movie.description }}</p>
+
+        <div class="info-section">
+          <h2 class="section-title">剧情简介</h2>
+          <p class="description">{{ movie.description }}</p>
+        </div>
+
+        <div class="info-section">
+          <h2 class="section-title">演职人员</h2>
+          <div class="actors-list">
+            <el-tag
+              v-for="actor in movie.actors"
+              :key="actor"
+              class="actor-tag"
+            >
+              {{ actor }}
+            </el-tag>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <el-button
+            type="primary"
+            :icon="isLiked ? 'Star' : 'StarFilled'"
+            :class="{ 'is-liked': isLiked }"
+            @click="handleLike"
+          >
+            {{ isLiked ? '取消收藏' : '收藏' }}
+          </el-button>
+          <el-button type="success" icon="VideoPlay">
+            观看预告片
+          </el-button>
         </div>
       </div>
     </div>
-    
-    <!-- 相似电影推荐部分 -->
-    <div class="similar-movies">
-      <h2>相似电影推荐</h2>
-      <div class="movie-grid">
-        <MovieCard
-          v-for="movie in similarMovies"
-          :key="movie.id"
-          :movie="movie"
-          @click="handleMovieClick(movie.id)"
-        />
-      </div>
-    </div>
   </div>
+  <el-empty v-else description="未找到电影信息" />
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import MovieCard from '../components/MovieCard.vue'
-import { Picture } from '@element-plus/icons-vue'
+import { movies } from '../mock/movies'
 
 export default {
   name: 'MovieDetail',
-  components: {
-    MovieCard,
-    Picture
-  },
-  setup() {
-    const route = useRoute()
-    const router = useRouter()
-    const movieId = route.params.id
-    
-    const movie = ref({
-      id: 1,
-      title: '电影标题',
-      poster: 'https://example.com/poster.jpg',
-      rating: 4.5,
-      ratingCount: 1000,
-      tags: ['热门', '高分'],
-      director: '导演姓名',
-      actors: ['演员1', '演员2', '演员3'],
-      genres: ['剧情', '动作', '科幻'],
-      region: '中国大陆',
-      releaseDate: '2023-01-01',
-      duration: 120,
-      description: '这是一段电影简介...'
-    })
-    
-    const similarMovies = ref([
-      {
-        id: 2,
-        title: '相似电影1',
-        poster: 'https://example.com/poster1.jpg',
-        rating: 4.3,
-        ratingCount: 800
-      },
-      {
-        id: 3,
-        title: '相似电影2',
-        poster: 'https://example.com/poster2.jpg',
-        rating: 4.2,
-        ratingCount: 700
-      },
-      {
-        id: 4,
-        title: '相似电影3',
-        poster: 'https://example.com/poster3.jpg',
-        rating: 4.1,
-        ratingCount: 600
-      }
-    ])
-    
-    const handleMovieClick = (id) => {
-      router.push(`/movie/${id}`)
-    }
-    
-    onMounted(() => {
-      // TODO: 根据movieId获取电影详情和相似电影
-      console.log('获取电影详情:', movieId)
-    })
-    
+  data() {
     return {
-      movie,
-      similarMovies,
-      handleMovieClick
+      movie: null,
+      isLiked: false
+    }
+  },
+  created() {
+    const movieId = parseInt(this.$route.params.id)
+    this.movie = movies.find(m => m.id === movieId)
+  },
+  methods: {
+    goBack() {
+      this.$router.back()
+    },
+    handleLike() {
+      this.isLiked = !this.isLiked
+      // TODO: 实现收藏逻辑
     }
   }
 }
@@ -162,160 +126,139 @@ export default {
 
 <style scoped>
 .movie-detail {
+  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
 }
 
-.movie-info {
-  display: flex;
+.movie-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.movie-content {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
   gap: 32px;
-  margin-bottom: 48px;
 }
 
 .movie-poster {
-  width: 300px;
-  flex-shrink: 0;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .movie-poster .el-image {
   width: 100%;
   height: 450px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
 }
 
 .image-placeholder {
   width: 100%;
-  height: 100%;
+  height: 450px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f5f7fa;
+  background-color: #f5f7fa;
   color: #909399;
   font-size: 24px;
 }
 
-.movie-content {
-  flex: 1;
-}
-
-.movie-title {
-  font-size: 32px;
-  font-weight: 700;
-  margin: 0 0 16px;
-  color: #2c3e50;
-}
-
-.movie-meta {
-  margin-bottom: 24px;
-}
-
-.rating {
+.movie-info {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.rating-count {
-  color: #909399;
-  font-size: 14px;
+.info-section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
-.tags {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+.section-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
 }
 
-.tag {
-  font-size: 14px;
-}
-
-.info-list {
+.info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 16px;
 }
 
 .info-item {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.info-item .label {
+.label {
   color: #909399;
-  min-width: 80px;
+  font-size: 14px;
 }
 
-.info-item .value {
-  color: #2c3e50;
+.value {
+  color: #303133;
+  font-size: 14px;
 }
 
-.movie-description {
-  margin-top: 24px;
-}
-
-.movie-description h3 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0 0 12px;
-  color: #2c3e50;
-}
-
-.movie-description p {
-  color: #606266;
-  line-height: 1.6;
+.description {
   margin: 0;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
-.similar-movies {
-  margin-top: 32px;
+.actors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.similar-movies h2 {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 24px;
-  color: #2c3e50;
+.actor-tag {
+  font-size: 13px;
 }
 
-.movie-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 24px;
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
 }
 
-@media (max-width: 992px) {
-  .movie-info {
-    flex-direction: column;
-    gap: 24px;
-  }
-  
-  .movie-poster {
-    width: 100%;
-    max-width: 300px;
-    margin: 0 auto;
-  }
-  
-  .info-list {
-    grid-template-columns: 1fr;
-  }
+.action-buttons .el-button.is-liked {
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+  color: #fff;
+}
+
+.action-buttons .el-button.is-liked:hover {
+  background-color: #ff7875;
+  border-color: #ff7875;
 }
 
 @media (max-width: 768px) {
-  .movie-detail {
-    padding: 16px;
+  .movie-content {
+    grid-template-columns: 1fr;
   }
-  
-  .movie-title {
-    font-size: 24px;
+
+  .movie-poster .el-image {
+    height: 300px;
   }
-  
-  .movie-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
+
+  .image-placeholder {
+    height: 300px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style> 

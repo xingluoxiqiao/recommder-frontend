@@ -13,7 +13,11 @@ export default {
   <div class="app">
     <Header />
     <main class="main-content">
-      <router-view></router-view>
+      <router-view v-slot="{ Component, route }">
+        <keep-alive :include="['RealtimeRecommend', 'OfflineRecommend']">
+          <component :is="Component" :key="route.fullPath" />
+        </keep-alive>
+      </router-view>
     </main>
   </div>
 </template>

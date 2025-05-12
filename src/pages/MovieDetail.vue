@@ -7,18 +7,30 @@
     </el-page-header>
 
     <div class="movie-content">
-      <div class="movie-poster">
-        <el-image
-          :src="movie.imageUrl"
-          :alt="movie.title"
-          fit="cover"
-        >
-          <template #error>
-            <div class="image-placeholder">
-              <el-icon><Picture /></el-icon>
-            </div>
-          </template>
-        </el-image>
+      <div class="movie-poster-section">
+        <div class="movie-poster">
+          <el-image
+            :src="movie.imageUrl"
+            :alt="movie.title"
+            fit="cover"
+          >
+            <template #error>
+              <div class="image-placeholder">
+                <el-icon><Picture /></el-icon>
+              </div>
+            </template>
+          </el-image>
+        </div>
+        <div class="action-buttons">
+          <el-button
+            type="primary"
+            :icon="isFavorite ? 'Star' : 'StarFilled'"
+            :class="{ 'is-liked': isFavorite }"
+            @click="handleFavorite"
+          >
+            {{ isFavorite ? '取消收藏' : '收藏' }}
+          </el-button>
+        </div>
       </div>
 
       <div class="movie-info">
@@ -78,18 +90,18 @@
           </div>
         </div>
 
-        <div class="action-buttons">
-          <el-button
-            type="primary"
-            :icon="isFavorite ? 'Star' : 'StarFilled'"
-            :class="{ 'is-liked': isFavorite }"
-            @click="handleFavorite"
-          >
-            {{ isFavorite ? '取消收藏' : '收藏' }}
-          </el-button>
-          <el-button type="success" icon="VideoPlay">
-            观看预告片
-          </el-button>
+        <div class="rating-section" v-if="isLoggedIn">
+          <h3>我的评分</h3>
+          <el-rate
+            v-model="userRating"
+            :max="10"
+            :texts="['很差', '较差', '一般', '还行', '不错', '很好', '非常好', '极好', '神作', '完美']"
+            show-text
+            @change="handleRatingChange"
+          />
+        </div>
+        <div v-else class="login-tip">
+          <el-button type="primary" @click="$router.push('/login')">登录后评分</el-button>
         </div>
       </div>
     </div>
@@ -105,7 +117,8 @@ export default {
   name: 'MovieDetail',
   data() {
     return {
-      movie: null
+      movie: null,
+      userRating: 0
     }
   },
   computed: {
@@ -117,6 +130,10 @@ export default {
   created() {
     const movieId = parseInt(this.$route.params.id)
     this.movie = movies.find(m => m.id === movieId)
+    if (this.isLoggedIn && this.movie) {
+      const userRatings = JSON.parse(localStorage.getItem('user_ratings') || '{}')
+      this.userRating = userRatings[this.movie.id] || 0
+    }
   },
   methods: {
     ...mapActions('user', ['toggleFavoriteMovie']),
@@ -135,6 +152,35 @@ export default {
       } catch (error) {
         this.$message.error('操作失败')
       }
+    },
+    handleRatingChange(value) {
+      if (!this.isLoggedIn) {
+        this.$message.warning('请先登录')
+        return
+      }
+      
+      // 保存用户评分
+      const userRatings = JSON.parse(localStorage.getItem('user_ratings') || '{}')
+      userRatings[this.movie.id] = value
+      localStorage.setItem('user_ratings', JSON.stringify(userRatings))
+      
+      // 更新电影评分（这里简单处理，实际应该调用后端API）
+      const allRatings = JSON.parse(localStorage.getItem('movie_ratings') || '{}')
+      if (!allRatings[this.movie.id]) {
+        allRatings[this.movie.id] = []
+      }
+      allRatings[this.movie.id].push(value)
+      
+      // 计算平均分
+      const avgRating = allRatings[this.movie.id].reduce((a, b) => a + b, 0) / allRatings[this.movie.id].length
+      this.movie.rating = avgRating.toFixed(1)
+      
+      localStorage.setItem('movie_ratings', JSON.stringify(allRatings))
+      
+      // 更新最后交互的电影
+      localStorage.setItem('last_interacted_movie', this.movie.id)
+      
+      this.$message.success('评分成功')
     }
   }
 }
@@ -158,10 +204,16 @@ export default {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 32px;
+  align-items: start;
+}
+
+.movie-poster-section {
+  position: sticky;
+  top: 20px;
+  height: fit-content;
 }
 
 .movie-poster {
-  position: relative;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -171,6 +223,7 @@ export default {
   width: 100%;
   height: 450px;
   object-fit: cover;
+  display: block;
 }
 
 .image-placeholder {
@@ -187,19 +240,19 @@ export default {
 .movie-info {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 .info-section {
   background: #fff;
-  padding: 20px;
+  padding: 16px;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
 .section-title {
-  margin: 0 0 16px 0;
-  font-size: 18px;
+  margin: 0 0 12px 0;
+  font-size: 16px;
   font-weight: bold;
   color: #303133;
 }
@@ -207,7 +260,7 @@ export default {
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .info-item {
@@ -218,18 +271,19 @@ export default {
 
 .label {
   color: #909399;
-  font-size: 14px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .value {
   color: #303133;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .description {
   margin: 0;
   color: #606266;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -240,13 +294,13 @@ export default {
 }
 
 .actor-tag {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .action-buttons {
+  margin-top: 12px;
   display: flex;
-  gap: 16px;
-  margin-top: 16px;
+  justify-content: center;
 }
 
 .action-buttons .el-button.is-liked {
@@ -260,9 +314,35 @@ export default {
   border-color: #ff7875;
 }
 
+.rating-section {
+  margin: 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.rating-section h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #303133;
+}
+
+.login-tip {
+  margin: 0;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .movie-content {
     grid-template-columns: 1fr;
+  }
+
+  .movie-poster-section {
+    position: relative;
+    top: 0;
   }
 
   .movie-poster .el-image {

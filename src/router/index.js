@@ -95,7 +95,7 @@ router.beforeEach(async (to, from, next) => {
   // 其他页面
   else {
     console.log('其他页面，允许访问')
-    next()
+  next()
   }
 })
 

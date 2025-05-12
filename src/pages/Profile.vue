@@ -50,7 +50,18 @@
         <div class="favorite-movies">
           <el-row :gutter="16">
             <el-col v-for="movieId in favoriteMovies" :key="movieId" :xs="12" :sm="8" :md="6" :lg="4">
-              <movie-card :movie="getMovieById(movieId)" />
+              <movie-card
+                :movie="{
+                  id: movieId,
+                  title: getMovieById(movieId).title,
+                  posterUrl: getMovieById(movieId).imageUrl,
+                  rating: getMovieById(movieId).rating,
+                  year: getMovieById(movieId).year,
+                  genre: Array.isArray(getMovieById(movieId).genre) ? getMovieById(movieId).genre.join(' / ') : '未知类型',
+                  description: getMovieById(movieId).description
+                }"
+                class="movie-item"
+              />
             </el-col>
           </el-row>
           <el-empty v-if="!favoriteMovies.length" description="暂无收藏电影" />
@@ -113,8 +124,12 @@ export default {
   methods: {
     ...mapActions('user', ['toggleFavoriteGenre', 'toggleFavoriteMovie']),
     
+    handleMovieClick(movie) {
+      this.$router.push(`/movie/${movie.id}`)
+    },
+    
     goBack() {
-      this.$router.back()
+      this.$router.push('/')
     },
     
     formatDate(date) {
@@ -122,22 +137,17 @@ export default {
       return new Date(date).toLocaleDateString()
     },
     
-    getMovieById(movieId) {
-      const movie = movies.find(movie => movie.id === movieId)
-      if (!movie) {
-        return {
-          id: movieId,
-          title: '未知电影',
-          posterUrl: '',
-          rating: 0,
-          year: '',
-          genre: '',
-          description: '电影信息不存在'
-        }
-      }
+    getMovieById(id) {
+      const movie = movies.find(m => m.id === id)
+      if (!movie) return null
       return {
-        ...movie,
-        posterUrl: movie.imageUrl || ''
+        id: movie.id,
+        title: movie.title,
+        imageUrl: movie.imageUrl,
+        rating: movie.rating,
+        year: movie.year,
+        genre: movie.genre,
+        description: movie.description
       }
     },
     
@@ -175,6 +185,11 @@ export default {
       } catch (error) {
         this.$message.error('操作失败')
       }
+    },
+    
+    handleLogout() {
+      this.$store.dispatch('user/logout')
+      this.$router.push('/login')
     }
   }
 }

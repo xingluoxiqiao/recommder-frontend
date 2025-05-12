@@ -28,6 +28,8 @@
               description: movie.description
             }"
             class="movie-item"
+            @movie-click="handleMovieClick"
+            @rating="handleMovieRating(movie)"
           />
         </el-col>
       </el-row>
@@ -42,8 +44,9 @@
 </template>
 
 <script>
-import MovieCard from '../components/MovieCard.vue'
-import { movies } from '../mock/movies'
+import { mapGetters } from 'vuex'
+import MovieCard from '@/components/MovieCard.vue'
+import { movies } from '@/mock/movies'
 
 export default {
   name: 'RealtimeRecommend',
@@ -52,27 +55,111 @@ export default {
   },
   data() {
     return {
-      recommendedMovies: movies.slice(0, 6), // 初始显示前6部电影
-      allMovies: movies,
-      isFirstLoad: true
+      recommendedMovies: [],
+      lastInteractedMovie: null // 记录用户最后交互的电影
     }
   },
-  activated() {
-    // 只在第一次加载时设置电影列表
-    if (this.isFirstLoad) {
-      this.recommendedMovies = movies.slice(0, 6)
-      this.isFirstLoad = false
-    }
+  computed: {
+    ...mapGetters('user', ['isLoggedIn'])
+  },
+  created() {
+    this.checkAndUpdateRecommendations()
+  },
+  beforeRouteEnter(to, from, next) {
+    next(vm => {
+      vm.checkAndUpdateRecommendations()
+    })
   },
   methods: {
+    checkAndUpdateRecommendations() {
+      // 从 localStorage 获取最后交互的电影
+      const lastMovieStr = localStorage.getItem('last_interacted_movie')
+      if (lastMovieStr) {
+        try {
+          const lastMovie = JSON.parse(lastMovieStr)
+          this.lastInteractedMovie = movies.find(m => m.id === lastMovie.id)
+        } catch (e) {
+          console.error('解析最后交互电影失败:', e)
+        }
+      }
+      this.updateRecommendations()
+    },
+    updateRecommendations() {
+      this.recommendedMovies = this.getRealtimeRecommendations()
+    },
+    getRealtimeRecommendations() {
+      if (!this.lastInteractedMovie) {
+        // 如果没有交互记录，随机推荐
+        return this.getRandomMovies(6)
+      }
+
+      // 计算每部电影与最后交互电影的匹配度
+      const movieScores = movies
+        .filter(movie => movie.id !== this.lastInteractedMovie.id) // 排除最后交互的电影
+        .map(movie => {
+          const movieGenres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
+          const lastMovieGenres = Array.isArray(this.lastInteractedMovie.genre) 
+            ? this.lastInteractedMovie.genre 
+            : [this.lastInteractedMovie.genre]
+          
+          // 计算共同标签数量
+          const commonGenres = movieGenres.filter(genre => lastMovieGenres.includes(genre))
+          // 计算匹配度分数（共同标签数量 / 最后交互电影的总标签数量）
+          const score = commonGenres.length / lastMovieGenres.length
+          
+          return {
+            movie,
+            score,
+            commonGenres
+          }
+        })
+
+      // 按匹配度分数排序，分数相同时随机排序
+      const sortedMovies = movieScores
+        .sort((a, b) => {
+          if (b.score === a.score) {
+            return Math.random() - 0.5
+          }
+          return b.score - a.score
+        })
+        .map(item => item.movie)
+
+      // 获取前4部匹配度最高的电影
+      const topMatches = sortedMovies.slice(0, 4)
+      
+      // 获取2部随机电影（排除已选择的电影和最后交互的电影）
+      const remainingMovies = movies.filter(movie => 
+        !topMatches.includes(movie) && movie.id !== this.lastInteractedMovie.id
+      )
+      const randomMovies = this.getRandomMoviesFromList(remainingMovies, 2)
+      
+      // 合并推荐结果
+      return [...topMatches, ...randomMovies]
+    },
+    getRandomMoviesFromList(movieList, count) {
+      const shuffled = [...movieList].sort(() => Math.random() - 0.5)
+      return shuffled.slice(0, count)
+    },
+    getRandomMovies(count) {
+      return this.getRandomMoviesFromList(movies, count)
+    },
     goBack() {
       this.$router.push('/')
     },
     refreshMovies() {
-      // 随机打乱电影数组
-      const shuffled = [...this.allMovies].sort(() => 0.5 - Math.random())
-      // 取前6部电影
-      this.recommendedMovies = shuffled.slice(0, 6)
+      this.updateRecommendations()
+    },
+    // 处理电影点击事件
+    handleMovieClick(movie) {
+      this.lastInteractedMovie = movie
+      localStorage.setItem('last_interacted_movie', JSON.stringify(movie))
+      this.updateRecommendations()
+    },
+    // 处理电影评分事件
+    handleMovieRating(movie) {
+      this.lastInteractedMovie = movie
+      localStorage.setItem('last_interacted_movie', JSON.stringify(movie))
+      this.updateRecommendations()
     }
   }
 }
@@ -89,6 +176,7 @@ export default {
 
 .movie-item {
   margin-bottom: 16px;
+  cursor: pointer;
 }
 
 .button-container {

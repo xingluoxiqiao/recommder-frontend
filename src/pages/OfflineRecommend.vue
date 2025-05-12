@@ -42,8 +42,9 @@
 </template>
 
 <script>
-import MovieCard from '../components/MovieCard.vue'
-import { movies } from '../mock/movies'
+import { mapGetters } from 'vuex'
+import MovieCard from '@/components/MovieCard.vue'
+import { movies } from '@/mock/movies'
 
 export default {
   name: 'OfflineRecommend',
@@ -52,27 +53,89 @@ export default {
   },
   data() {
     return {
-      recommendedMovies: movies.slice(6, 12), // 初始显示第7-12部电影
-      allMovies: movies,
-      isFirstLoad: true
+      recommendedMovies: []
     }
   },
-  activated() {
-    // 只在第一次加载时设置电影列表
-    if (this.isFirstLoad) {
-      this.recommendedMovies = movies.slice(6, 12)
-      this.isFirstLoad = false
-    }
+  computed: {
+    ...mapGetters('user', ['isLoggedIn', 'favoriteGenres'])
+  },
+  created() {
+    this.updateRecommendations()
   },
   methods: {
+    updateRecommendations() {
+      this.recommendedMovies = this.getOfflineRecommendations()
+    },
+    getOfflineRecommendations() {
+      if (!this.isLoggedIn) {
+        // 未登录时随机推荐
+        return this.getRandomMovies(6)
+      }
+
+      // 获取用户收藏的类型
+      const favoriteGenres = this.favoriteGenres
+      if (!favoriteGenres || favoriteGenres.length === 0) {
+        // 如果没有收藏类型，随机推荐
+        return this.getRandomMovies(6)
+      }
+
+      // 计算每部电影与用户收藏类型的匹配度
+      const movieScores = movies.map(movie => {
+        const movieGenres = Array.isArray(movie.genre) ? movie.genre : [movie.genre]
+        // 计算匹配的类型数量
+        const matchCount = movieGenres.filter(genre => favoriteGenres.includes(genre)).length
+        // 计算匹配度分数（匹配类型数量 / 电影总类型数量）
+        const score = matchCount / movieGenres.length
+        return {
+          movie,
+          score
+        }
+      })
+
+      // 按匹配度分数排序，分数相同时随机排序
+      const sortedMovies = movieScores
+        .sort((a, b) => {
+          if (b.score === a.score) {
+            return Math.random() - 0.5
+          }
+          return b.score - a.score
+        })
+        .map(item => item.movie)
+
+      // 获取前4部匹配度最高的电影
+      const topMatches = sortedMovies.slice(0, 4)
+      
+      // 获取2部随机电影（排除已选择的电影）
+      const remainingMovies = movies.filter(movie => !topMatches.includes(movie))
+      const randomMovies = this.getRandomMoviesFromList(remainingMovies, 2)
+      
+      // 合并推荐结果
+      return [...topMatches, ...randomMovies]
+    },
+    getRandomMoviesFromList(movieList, count) {
+      const shuffled = [...movieList].sort(() => Math.random() - 0.5)
+      return shuffled.slice(0, count)
+    },
+    getRandomMovies(count) {
+      return this.getRandomMoviesFromList(movies, count)
+    },
     goBack() {
       this.$router.push('/')
     },
     refreshMovies() {
-      // 随机打乱电影数组
-      const shuffled = [...this.allMovies].sort(() => 0.5 - Math.random())
-      // 取前6部电影
-      this.recommendedMovies = shuffled.slice(0, 6)
+      this.updateRecommendations()
+    }
+  },
+  watch: {
+    // 监听登录状态和收藏类型变化，更新推荐
+    isLoggedIn() {
+      this.updateRecommendations()
+    },
+    favoriteGenres: {
+      handler() {
+        this.updateRecommendations()
+      },
+      deep: true
     }
   }
 }

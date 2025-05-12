@@ -105,9 +105,24 @@ export default {
       }
     },
     handleDetails() {
+      // 更新最后交互的电影
+      const movie = {
+        id: this.movie.id,
+        title: this.movie.title,
+        genre: this.movie.genre.split(' / '), // 将字符串转回数组
+        rating: this.movie.rating,
+        year: this.movie.year,
+        description: this.movie.description,
+        imageUrl: this.movie.posterUrl
+      }
+      localStorage.setItem('last_interacted_movie', JSON.stringify(movie))
       this.$router.push(`/movie/${this.movie.id}`)
     },
-    handleCardClick() {
+    handleCardClick(event) {
+      // 如果点击的是操作按钮区域，不处理
+      if (event.target.closest('.movie-actions')) {
+        return
+      }
       this.handleDetails()
     }
   }

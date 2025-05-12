@@ -2,7 +2,7 @@
   <header class="header">
     <div class="header-content">
       <div class="logo" @click="$router.push('/')">
-        <span>电影推荐系统</span>
+          <span>电影推荐系统</span>
       </div>
       
       <div class="nav-links">
@@ -159,8 +159,8 @@ export default {
   
   .logo span {
     display: none;
-  }
-  
+}
+
   .nav-links {
     gap: 10px;
   }
